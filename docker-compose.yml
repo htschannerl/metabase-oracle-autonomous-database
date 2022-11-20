@@ -1,0 +1,60 @@
+version: '3.9'
+
+networks:
+  web:
+    external: true
+
+services:
+  metabase-db:
+    image: postgres:14
+    container_name: metabase-db
+    hostname: metabasedb.tschannerl.com
+    restart: always
+    volumes:
+      - ./dados/scripts:/scripts
+      - ./dados/postgres:/var/lib/postgresql/data
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      TZ: America/Sao_Paulo
+      POSTGRES_USER_FILE: /run/secrets/db_user
+      POSTGRES_DB: metabase
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_user
+      - db_password
+    networks:
+      - web
+
+  metabase:
+    image: metabase/metabase:latest
+    restart: always
+    container_name: metabase
+    hostname: metabase.tschannerl.com
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./dados/scripts:/scripts
+      - ./dados/plugins:/plugins
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: metabase
+      MB_DB_PORT: 5432
+      MB_DB_USER_FILE: /run/secrets/db_user
+      MB_DB_PASS_FILE: /run/secrets/db_password
+      MB_DB_HOST: metabase-db
+      JAVA_TIMEZONE: America/Sao_Paulo
+      MUID: 1000
+      MGID: 1000
+      JAVA_OPTS: "-Djavax.net.ssl.keyStore=/scripts/keystore.jks -Djavax.net.ssl.keyStoreType=JKS -Djavax.net.ssl.keyStorePassword=<keyStorePassword>"
+    secrets:
+      - db_user
+      - db_password
+    networks:
+      - web
+    depends_on:
+      - metabase-db
+
+secrets:
+  db_user:
+    file: ./.POSTGRES_USER
+  db_password:
+    file: ./.POSTGRES_PASSWORD
